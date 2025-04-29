@@ -69,7 +69,7 @@ mongoose.connect(DBString, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
     ssl: true,
-    tlsAllowInvalidCertificates: true
+    tlsAllowInvalidCertificates: false
 });
 const database = mongoose.connection
 
