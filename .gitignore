@@ -2,7 +2,7 @@
 node_modules/
 
 # Environment variables (secrets)
-# .env
+.env
 
 # Logs
 logs
@@ -41,4 +41,4 @@ tmp/
 temp/
 
 # Ignore environment-specific settings
-# .env.*
+.env.*
