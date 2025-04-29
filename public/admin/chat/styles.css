@@ -1,0 +1,91 @@
+/* Chat Styles */
+.chat-messages {
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 0.5rem;
+}
+
+.message {
+    margin-bottom: 1rem;
+    max-width: 80%;
+}
+
+.message.sent {
+    margin-left: auto;
+}
+
+.message.received {
+    margin-right: auto;
+}
+
+.message-content {
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    background-color: white;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.message.sent .message-content {
+    background-color: #007bff;
+    color: white;
+}
+
+.message.received .message-content {
+    background-color: white;
+}
+
+.message small {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+}
+
+.message.sent small {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.message.received small {
+    color: #6c757d;
+}
+
+#chatUsersList .list-group-item {
+    cursor: pointer;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#chatUsersList .list-group-item:hover {
+    background-color: #f8f9fa;
+}
+
+#chatUsersList .list-group-item.active {
+    background-color: #e9ecef;
+    border-color: #dee2e6;
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-dot.online {
+    background-color: #28a745;
+}
+
+.status-dot.offline {
+    background-color: #dc3545;
+}
+
+#chatMessageInput:disabled {
+    background-color: #e9ecef;
+    cursor: not-allowed;
+}
+
+#sendMessageBtn:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+} 

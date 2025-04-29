@@ -1,0 +1,44 @@
+# Node modules (installed dependencies)
+node_modules/
+
+# Environment variables (secrets)
+# .env
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# IDE/editor directories
+.vscode/
+.idea/
+*.sw?
+
+# Build/coverage/test output
+dist/
+build/
+coverage/
+
+# MongoDB local database files (if stored locally for development)
+*.local.db
+dump/
+
+# PM2 logs and configs (if using PM2 process manager)
+pids/
+*.pid
+*.seed
+*.gz
+
+# Optional: ignore uploads or other temp directories
+uploads/
+tmp/
+temp/
+
+# Ignore environment-specific settings
+# .env.*
