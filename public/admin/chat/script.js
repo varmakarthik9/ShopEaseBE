@@ -97,14 +97,14 @@ export function initializeChat() {
                     updateUserStatuses(data.onlineUsers);
                 } else if (data.type === 'message') {
                     console.log('Received message:', data);
-                    // Display message regardless of sender
-                    displayMessage({
-                        sender: data.senderId === currentUser._id ? 'sent' : 'received',
-                        content: data.content,
-                        timestamp: data.timestamp
-                    });
-                } else if (data.type === 'messageSent') {
-                    console.log('Message sent successfully:', data.messageId);
+                    // Display message from other user
+                    if (data.senderId !== currentUser._id) {
+                        displayMessage({
+                            sender: 'received',
+                            content: data.content,
+                            timestamp: data.timestamp
+                        });
+                    }
                 } else if (data.type === 'error') {
                     console.error('Server error:', data.message);
                     displayMessage({
@@ -125,12 +125,26 @@ export function initializeChat() {
 
         socket.onerror = (error) => {
             console.error('WebSocket error:', error);
+            displayMessage({
+                sender: 'system',
+                content: 'WebSocket connection error. Messages may be delayed.',
+                timestamp: new Date()
+            });
         };
 
         socket.onclose = () => {
             console.log('WebSocket connection closed');
+            displayMessage({
+                sender: 'system',
+                content: 'WebSocket connection closed. Messages may be delayed.',
+                timestamp: new Date()
+            });
             // Attempt to reconnect after 5 seconds
-            setTimeout(initializeChat, 5000);
+            setTimeout(() => {
+                if (selectedUserId) {
+                    selectUser(currentUser);
+                }
+            }, 5000);
         };
     }
 
@@ -249,12 +263,17 @@ export function initializeChat() {
 
         // Display message immediately
         displayMessage({
-            sender: 'admin',
+            sender: 'sent',
             content: content,
             timestamp: new Date()
         });
 
-        // Always use HTTP for sending messages to ensure they're saved
+        // Send via WebSocket if connected
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify(message));
+        }
+
+        // Also send via HTTP as fallback
         sendMessageViaHTTP(message);
         chatMessageInput.value = '';
     };
