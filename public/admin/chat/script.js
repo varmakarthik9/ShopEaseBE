@@ -97,20 +97,29 @@ export function initializeChat() {
                     updateUserStatuses(data.onlineUsers);
                 } else if (data.type === 'message') {
                     console.log('Received message:', data);
-                    if (data.senderId === selectedUserId) {
-                        displayMessage({
-                            sender: 'user',
-                            content: data.content,
-                            timestamp: data.timestamp
-                        });
-                    }
+                    // Display message regardless of sender
+                    displayMessage({
+                        sender: data.senderId === currentUser._id ? 'sent' : 'received',
+                        content: data.content,
+                        timestamp: data.timestamp
+                    });
                 } else if (data.type === 'messageSent') {
                     console.log('Message sent successfully:', data.messageId);
                 } else if (data.type === 'error') {
                     console.error('Server error:', data.message);
+                    displayMessage({
+                        sender: 'system',
+                        content: data.message,
+                        timestamp: new Date()
+                    });
                 }
             } catch (error) {
                 console.error('Error processing WebSocket message:', error);
+                displayMessage({
+                    sender: 'system',
+                    content: 'Error processing message',
+                    timestamp: new Date()
+                });
             }
         };
 
@@ -140,26 +149,18 @@ export function initializeChat() {
         });
     }
 
-    // WebSocket message handler
-    function handleWebSocketMessage(event) {
-        const data = JSON.parse(event.data);
-        
-        if (data.type === 'error') {
-            displayMessage({
-                sender: 'system',
-                content: data.message,
-                timestamp: new Date()
-            });
-            return;
-        }
-
-        if (data.senderId === selectedUserId && data.senderId !== 'admin') {
-            displayMessage({
-                sender: 'user',
-                content: data.content,
-                timestamp: data.timestamp
-            });
-        }
+    // Display a message in the chat
+    function displayMessage(message) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${message.sender}`;
+        messageDiv.innerHTML = `
+            <div class="message-content">
+                <p>${message.content}</p>
+                <small class="text-muted">${new Date(message.timestamp).toLocaleString()}</small>
+            </div>
+        `;
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
     // Load chat history
@@ -197,20 +198,6 @@ export function initializeChat() {
             console.error('Error loading chat history:', error);
             chatMessages.innerHTML = '<div class="text-danger">Failed to load chat history</div>';
         });
-    }
-
-    // Display message in chat
-    function displayMessage(message) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${message.sender === 'admin' ? 'sent' : 'received'}`;
-        messageDiv.innerHTML = `
-            <div class="message-content">
-                <p>${message.content}</p>
-                <small class="text-muted">${new Date(message.timestamp).toLocaleString()}</small>
-            </div>
-        `;
-        chatMessages.appendChild(messageDiv);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
     // HTTP fallback for sending messages
