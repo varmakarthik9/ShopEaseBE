@@ -68,7 +68,7 @@ mongoose.connect(DBString, {
 
     // WebSocket
     server.on('upgrade', (request, socket, head) => {
-        const pathname = new URL(request.url, 'http://localhost').pathname;
+        const pathname = new URL(request.url, `http://${request.headers.host}`).pathname;
         if (pathname === '/chat') {
             chatWebSocket.handleUpgrade(request, socket, head, (ws) => {
                 chatWebSocket.emit('connection', ws, request);
