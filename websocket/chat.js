@@ -62,34 +62,35 @@ wss.on('connection', async (ws, request) => {
                     const recipientId = data.recipientId;
                     const recipientWs = onlineUsers.get(recipientId);
 
-                    if (recipientWs && recipientWs.readyState === WebSocket.OPEN) {
-                        // Add message to queue if recipient is not online
-                        if (!recipientWs) {
-                            const queue = messageQueue.get(recipientId);
-                            queue.push({
-                                type: 'message',
-                                senderId: userId,
-                                content: data.content,
-                                timestamp: new Date()
-                            });
-                            messageQueue.set(recipientId, queue);
-                        } else {
-                            recipientWs.send(JSON.stringify({
-                                type: 'message',
-                                senderId: userId,
-                                content: data.content,
-                                timestamp: new Date()
-                            }));
-                        }
+                    // Save message to database first
+                    const chatMessage = new Chat({
+                        sender: userId,
+                        recipient: recipientId,
+                        content: data.content,
+                        timestamp: new Date()
+                    });
+                    const savedMessage = await chatMessage.save();
 
-                        // Save message to database
-                        const chatMessage = new Chat({
-                            sender: userId,
-                            recipient: recipientId,
+                    // Send to recipient if they're online
+                    if (recipientWs && recipientWs.readyState === WebSocket.OPEN) {
+                        recipientWs.send(JSON.stringify({
+                            type: 'message',
+                            senderId: userId,
                             content: data.content,
-                            timestamp: new Date()
+                            timestamp: savedMessage.timestamp
+                        }));
+                    }
+
+                    // Add to message queue if recipient is offline
+                    if (!recipientWs) {
+                        const queue = messageQueue.get(recipientId) || [];
+                        queue.push({
+                            type: 'message',
+                            senderId: userId,
+                            content: data.content,
+                            timestamp: savedMessage.timestamp
                         });
-                        await chatMessage.save();
+                        messageQueue.set(recipientId, queue);
                     }
                 }
             } catch (error) {

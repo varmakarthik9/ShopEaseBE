@@ -84,11 +84,11 @@ export function initializeChat() {
         socket.onopen = () => {
             console.log('WebSocket connection established');
             socket.send(JSON.stringify({ type: 'getOnlineStatus' }));
-            displayMessage({
-                sender: 'system',
-                content: 'WebSocket connection established. Real-time messaging is active.',
-                timestamp: new Date()
-            });
+            // displayMessage({
+            //     sender: 'system',
+            //     content: 'WebSocket connection established. Real-time messaging is active.',
+            //     timestamp: new Date()
+            // });
         };
 
         socket.onmessage = (event) => {
@@ -130,22 +130,22 @@ export function initializeChat() {
 
         socket.onerror = (error) => {
             console.error('WebSocket error:', error);
-            displayMessage({
-                sender: 'system',
-                content: 'WebSocket connection error. Messages may be delayed.',
-                timestamp: new Date()
-            });
+            // displayMessage({
+            //     sender: 'system',
+            //     content: 'WebSocket connection error. Messages may be delayed.',
+            //     timestamp: new Date()
+            // });
         };
 
         socket.onclose = () => {
             console.log('WebSocket connection closed');
             // Only show message if we're not intentionally closing
             if (!socket._intentionalClose) {
-                displayMessage({
-                    sender: 'system',
-                    content: 'WebSocket connection closed. Messages may be delayed.',
-                    timestamp: new Date()
-                });
+                // displayMessage({
+                //     sender: 'system',
+                //     content: 'WebSocket connection closed. Messages may be delayed.',
+                //     timestamp: new Date()
+                // });
             }
             // Attempt to reconnect after 5 seconds
             setTimeout(() => {
@@ -178,9 +178,6 @@ export function initializeChat() {
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify(message));
             }
-
-            // Send via HTTP as fallback
-            sendMessageViaHTTP(message);
             chatMessageInput.value = '';
         };
     }
@@ -248,41 +245,6 @@ export function initializeChat() {
         .catch(error => {
             console.error('Error loading chat history:', error);
             chatMessages.innerHTML = '<div class="text-danger">Failed to load chat history</div>';
-        });
-    }
-
-    // HTTP fallback for sending messages
-    function sendMessageViaHTTP(message) {
-        console.log('Sending message via HTTP:', message);
-        fetch('/chat/send', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify({
-                recipientId: message.recipientId,
-                content: message.content
-            })
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log('Message sent successfully via HTTP:', data);
-            // Reload chat history to show the new message
-            loadChatHistory(selectedUserId);
-        })
-        .catch(error => {
-            console.error('Error sending message via HTTP:', error);
-            displayMessage({
-                sender: 'system',
-                content: 'Failed to send message. Please try again.',
-                timestamp: new Date()
-            });
         });
     }
 
