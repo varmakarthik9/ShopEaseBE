@@ -84,6 +84,11 @@ export function initializeChat() {
         socket.onopen = () => {
             console.log('WebSocket connection established');
             socket.send(JSON.stringify({ type: 'getOnlineStatus' }));
+            displayMessage({
+                sender: 'system',
+                content: 'WebSocket connection established. Real-time messaging is active.',
+                timestamp: new Date()
+            });
         };
 
         socket.onmessage = (event) => {
@@ -97,7 +102,7 @@ export function initializeChat() {
                     updateUserStatuses(data.onlineUsers);
                 } else if (data.type === 'message') {
                     console.log('Received message:', data);
-                    // Display message from other user
+                    // Only display received messages from other users
                     if (data.senderId !== currentUser._id) {
                         displayMessage({
                             sender: 'received',
@@ -134,17 +139,49 @@ export function initializeChat() {
 
         socket.onclose = () => {
             console.log('WebSocket connection closed');
-            displayMessage({
-                sender: 'system',
-                content: 'WebSocket connection closed. Messages may be delayed.',
-                timestamp: new Date()
-            });
+            // Only show message if we're not intentionally closing
+            if (!socket._intentionalClose) {
+                displayMessage({
+                    sender: 'system',
+                    content: 'WebSocket connection closed. Messages may be delayed.',
+                    timestamp: new Date()
+                });
+            }
             // Attempt to reconnect after 5 seconds
             setTimeout(() => {
                 if (selectedUserId) {
                     selectUser(currentUser);
                 }
             }, 5000);
+        };
+
+        // Send message
+        chatForm.onsubmit = (e) => {
+            e.preventDefault();
+            const content = chatMessageInput.value.trim();
+            if (!content) return;
+
+            const message = {
+                type: 'message',
+                recipientId: selectedUserId,
+                content: content
+            };
+
+            // Display message immediately
+            displayMessage({
+                sender: 'sent',
+                content: content,
+                timestamp: new Date()
+            });
+
+            // Send via WebSocket if connected
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify(message));
+            }
+
+            // Send via HTTP as fallback
+            sendMessageViaHTTP(message);
+            chatMessageInput.value = '';
         };
     }
 
@@ -248,35 +285,6 @@ export function initializeChat() {
             });
         });
     }
-
-    // Send message
-    chatForm.onsubmit = (e) => {
-        e.preventDefault();
-        const content = chatMessageInput.value.trim();
-        if (!content) return;
-
-        const message = {
-            type: 'message',
-            recipientId: selectedUserId,
-            content: content
-        };
-
-        // Display message immediately
-        displayMessage({
-            sender: 'sent',
-            content: content,
-            timestamp: new Date()
-        });
-
-        // Send via WebSocket if connected
-        if (socket && socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify(message));
-        }
-
-        // Also send via HTTP as fallback
-        sendMessageViaHTTP(message);
-        chatMessageInput.value = '';
-    };
 
     // Load initial users
     loadChatUsers();

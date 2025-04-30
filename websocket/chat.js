@@ -5,6 +5,7 @@ const Chat = require('../models/chat');
 
 const wss = new WebSocket.Server({ noServer: true });
 const onlineUsers = new Map(); // Map of userId to WebSocket connection
+const messageQueue = new Map(); // Map of userId to message queue
 
 module.exports = {
     handleUpgrade(request, socket, head, cb) {
@@ -40,6 +41,9 @@ wss.on('connection', async (ws, request) => {
         // Store the connection
         onlineUsers.set(userId, ws);
 
+        // Initialize message queue for user
+        messageQueue.set(userId, []);
+
         // Send initial online status to the new connection
         ws.send(JSON.stringify({
             type: 'onlineStatus',
@@ -59,22 +63,34 @@ wss.on('connection', async (ws, request) => {
                     const recipientWs = onlineUsers.get(recipientId);
 
                     if (recipientWs && recipientWs.readyState === WebSocket.OPEN) {
-                        recipientWs.send(JSON.stringify({
-                            type: 'message',
-                            senderId: userId,
+                        // Add message to queue if recipient is not online
+                        if (!recipientWs) {
+                            const queue = messageQueue.get(recipientId);
+                            queue.push({
+                                type: 'message',
+                                senderId: userId,
+                                content: data.content,
+                                timestamp: new Date()
+                            });
+                            messageQueue.set(recipientId, queue);
+                        } else {
+                            recipientWs.send(JSON.stringify({
+                                type: 'message',
+                                senderId: userId,
+                                content: data.content,
+                                timestamp: new Date()
+                            }));
+                        }
+
+                        // Save message to database
+                        const chatMessage = new Chat({
+                            sender: userId,
+                            recipient: recipientId,
                             content: data.content,
                             timestamp: new Date()
-                        }));
+                        });
+                        await chatMessage.save();
                     }
-
-                    // Save message to database
-                    const chatMessage = new Chat({
-                        sender: userId,
-                        recipient: recipientId,
-                        content: data.content,
-                        timestamp: new Date()
-                    });
-                    await chatMessage.save();
                 }
             } catch (error) {
                 console.error('Error processing message:', error);
@@ -117,6 +133,17 @@ function broadcastOnlineStatus(excludeUserId = null) {
                 type: 'onlineStatus',
                 onlineUsers: onlineStatus
             }));
+        }
+    });
+
+    // Check if any messages are queued for online users
+    onlineUsers.forEach((ws, userId) => {
+        const queue = messageQueue.get(userId);
+        if (queue.length > 0) {
+            queue.forEach(message => {
+                ws.send(JSON.stringify(message));
+            });
+            messageQueue.set(userId, []);
         }
     });
 }
