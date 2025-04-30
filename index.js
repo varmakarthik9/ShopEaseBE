@@ -40,65 +40,66 @@ console.log('- POST /chat/send');
 console.log('- GET /chat/history/:userId');
 console.log('- GET /chat/unread');
 
-// Serve admin panel
-app.get('/admin*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html'));
-});
-
-// Serve admin login page
-app.get('/login*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'login', 'index.html'));
-});
-
-// WebSocket upgrade handling
-server.on('upgrade', (request, socket, head) => {
-    const pathname = new URL(request.url, 'http://localhost').pathname;
-    console.log('WebSocket upgrade request:', pathname);
-
-    if (pathname === '/chat') {
-        chatWebSocket.handleUpgrade(request, socket, head, (ws) => {
-            chatWebSocket.emit('connection', ws, request);
-        });
-    } else {
-        socket.destroy();
-    }
-});
-
-//DATABASE Connection
 mongoose.connect(DBString, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
-    ssl: true,
-    tlsAllowInvalidCertificates: false
-});
-const database = mongoose.connection
-
-database.on('error', (error) => {
-    console.log(error)
 })
-
-database.once('connected', () => {
+.then(() => {
     console.log('Database Connected');
+
+    // Register middleware and routes AFTER DB connects
+    app.use(cors());
+    app.use(express.json());
+    app.use(express.static(path.join(__dirname, 'public')));
+
+    app.use('/users', usersRouter);
+    app.use('/products', productsRouter);
+    app.use('/cart', cartRouter);
+    app.use('/orders', orderRouter);
+    app.use('/chat', chatRouter);
+
+    // Serve static files
+    app.get('/admin*', (req, res) => {
+        res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html'));
+    });
+    app.get('/login*', (req, res) => {
+        res.sendFile(path.join(__dirname, 'public', 'login', 'index.html'));
+    });
+
+    // WebSocket
+    server.on('upgrade', (request, socket, head) => {
+        const pathname = new URL(request.url, 'http://localhost').pathname;
+        if (pathname === '/chat') {
+            chatWebSocket.handleUpgrade(request, socket, head, (ws) => {
+                chatWebSocket.emit('connection', ws, request);
+            });
+        } else {
+            socket.destroy();
+        }
+    });
+
+    // Scheduler
+    scheduleDailyEmails();
+    console.log('Email scheduler initialized - will send emails daily at 6:10 PM');
+
+    // Error middleware
+    app.use((err, req, res, next) => {
+        console.error('Error:', err.stack);
+        res.status(500).json({ message: 'Something went wrong!' });
+    });
+
+    app.use((req, res) => {
+        res.status(404).json({ message: 'Route not found' });
+    });
+
+    // Start the server
+    const PORT = process.env.PORT || 3000;
+    server.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
+    });
+
 })
-
-// Initialize the email scheduler
-scheduleDailyEmails();
-console.log('Email scheduler initialized - will send emails daily at 6:10 PM');
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-    console.error('Error:', err.stack);
-    res.status(500).json({ message: 'Something went wrong!' });
-});
-
-// 404 handler
-app.use((req, res) => {
-    console.log('404 - Route not found:', req.method, req.url);
-    res.status(404).json({ message: 'Route not found' });
-});
-
-//Server Started
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+.catch(err => {
+    console.error("❌ MongoDB Connection Error:", err.message);
+    process.exit(1);
 });
