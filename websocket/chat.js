@@ -6,11 +6,23 @@ const Chat = require('../models/chat');
 const wss = new WebSocket.Server({ noServer: true });
 const onlineUsers = new Map(); // Map of userId to WebSocket connection
 
+module.exports = {
+    handleUpgrade(request, socket, head, cb) {
+        wss.handleUpgrade(request, socket, head, cb);
+    },
+    emit(event, ...args) {
+        wss.emit(event, ...args);
+    },
+    on(event, listener) {
+        wss.on(event, listener);
+    }
+};
+
 wss.on('connection', async (ws, request) => {
     let userId = null;
     try {
         // Extract token from query parameters
-        const url = new URL(request.url, 'ws://localhost');
+        const url = new URL(request.url, `http://${request.headers.host}`);
         const token = url.searchParams.get('token');
         
         if (!token) {
@@ -40,6 +52,7 @@ wss.on('connection', async (ws, request) => {
         ws.on('message', async (message) => {
             try {
                 const data = JSON.parse(message);
+                console.log('Received message:', data);
 
                 if (data.type === 'message') {
                     const recipientId = data.recipientId;
@@ -53,8 +66,18 @@ wss.on('connection', async (ws, request) => {
                             timestamp: new Date()
                         }));
                     }
+
+                    // Save message to database
+                    const chatMessage = new Chat({
+                        sender: userId,
+                        recipient: recipientId,
+                        content: data.content,
+                        timestamp: new Date()
+                    });
+                    await chatMessage.save();
                 }
             } catch (error) {
+                console.error('Error processing message:', error);
                 ws.send(JSON.stringify({
                     type: 'error',
                     message: 'Error processing message'
@@ -70,6 +93,7 @@ wss.on('connection', async (ws, request) => {
         });
 
         ws.on('error', (error) => {
+            console.error('WebSocket error:', error);
             if (userId) {
                 onlineUsers.delete(userId);
                 broadcastOnlineStatus(userId);
@@ -77,6 +101,7 @@ wss.on('connection', async (ws, request) => {
         });
 
     } catch (error) {
+        console.error('Connection error:', error);
         ws.close();
     }
 });
@@ -84,6 +109,7 @@ wss.on('connection', async (ws, request) => {
 // Function to broadcast online status to all connected clients
 function broadcastOnlineStatus(excludeUserId = null) {
     const onlineStatus = Array.from(onlineUsers.keys());
+    console.log('Broadcasting online status:', onlineStatus);
 
     wss.clients.forEach(client => {
         if (client.readyState === WebSocket.OPEN) {
@@ -94,5 +120,3 @@ function broadcastOnlineStatus(excludeUserId = null) {
         }
     });
 }
-
-module.exports = wss; 

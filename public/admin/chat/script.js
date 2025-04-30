@@ -74,7 +74,9 @@ export function initializeChat() {
         }
 
         const token = localStorage.getItem('token');
-        const wsUrl = `ws://${window.location.host}/chat?token=${token}`;
+        // Use wss for HTTPS connections
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/chat?token=${token}`;
         console.log('Connecting to WebSocket:', wsUrl);
         
         socket = new WebSocket(wsUrl);
@@ -94,6 +96,7 @@ export function initializeChat() {
                     console.log('Online users update received:', data.onlineUsers);
                     updateUserStatuses(data.onlineUsers);
                 } else if (data.type === 'message') {
+                    console.log('Received message:', data);
                     if (data.senderId === selectedUserId) {
                         displayMessage({
                             sender: 'user',
@@ -105,11 +108,6 @@ export function initializeChat() {
                     console.log('Message sent successfully:', data.messageId);
                 } else if (data.type === 'error') {
                     console.error('Server error:', data.message);
-                    displayMessage({
-                        sender: 'system',
-                        content: data.message,
-                        timestamp: new Date()
-                    });
                 }
             } catch (error) {
                 console.error('Error processing WebSocket message:', error);
@@ -122,11 +120,8 @@ export function initializeChat() {
 
         socket.onclose = () => {
             console.log('WebSocket connection closed');
-            setTimeout(() => {
-                if (selectedUserId) {
-                    selectUser(currentUser);
-                }
-            }, 5000);
+            // Attempt to reconnect after 5 seconds
+            setTimeout(initializeChat, 5000);
         };
     }
 
